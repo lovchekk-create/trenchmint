@@ -394,6 +394,15 @@ h3 { font-size: clamp(26px, 2.6vw, 38px); letter-spacing: -0.025em; line-height:
   [data-reveal] { opacity: 1; transform: none; filter: none; }
 }
 
+/* contract address chip */
+.ca-chip { display: inline-flex; align-items: center; gap: 10px; margin-top: 18px; max-width: 100%; padding: 8px 8px 8px 12px; border: 1px solid rgba(23,28,23,.08); border-radius: 14px; background: #fff; box-shadow: 0 1px 0 rgba(23,28,23,.04), 0 8px 24px -14px rgba(23,28,23,.35); font: inherit; color: #171C17; cursor: pointer; transition: transform .2s ease, box-shadow .2s ease; }
+.ca-chip:hover { transform: translateY(-2px); box-shadow: 0 1px 0 rgba(23,28,23,.04), 0 14px 30px -14px rgba(23,28,23,.4); }
+.ca-chip:active { transform: translateY(0); }
+.ca-label { font-size: 11px; font-weight: 700; letter-spacing: .08em; padding: 4px 8px; border-radius: 8px; background: #E8FFD8; color: #2c5a0c; }
+.ca-value { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; color: #171C17; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ca-copy { font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: 9px; background: #A6FF4D; box-shadow: inset 0 -2px 0 rgba(0,0,0,.12); white-space: nowrap; }
+@media (max-width: 560px) { .ca-value { font-size: 11px; } .ca-chip { gap: 8px; } }
+
 </style>
 </head>
 <body>
@@ -469,6 +478,9 @@ h3 { font-size: clamp(26px, 2.6vw, 38px); letter-spacing: -0.025em; line-height:
         <a class="btn btn-secondary btn-lg" href="#showcase">Discover TrenchMint</a>
       </div>
       <div class="status" data-reveal style="--d:.32s"><i class="live-dot"></i>THE ECOSYSTEM IS LIVE</div>
+      <button class="ca-chip" type="button" data-copy="HxUnUHuB5v5Ta2NZVkK3uVNvoqjUM5KUEYMenhh4pump" data-reveal style="--d:.4s" aria-label="Copy contract address">
+        <span class="ca-label">CA</span><code class="ca-value">HxUnUHuB5v5Ta2NZVkK3uVNvoqjUM5KUEYMenhh4pump</code><span class="ca-copy">Copy</span>
+      </button>
     </div>
     <div class="hero-stage stage-box" data-parallax="-0.05" aria-label="Interactive 3D TrenchMint smartphone">
       <canvas class="stage" data-scene="hero" role="img" aria-label="3D smartphone showing the TrenchMint dashboard, surrounded by floating coins"></canvas>
@@ -1831,6 +1843,13 @@ void main(){
     toastEl.textContent = msg; toastEl.classList.add('show');
     clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2600);
   }
+  document.querySelectorAll('[data-copy]').forEach((el) => el.addEventListener('click', async () => {
+    const v = el.dataset.copy;
+    try { await navigator.clipboard.writeText(v); }
+    catch (e) { const t = document.createElement('textarea'); t.value = v; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); } catch (_) {} t.remove(); }
+    toast('Contract address copied');
+  }));
+
 
   /* ---------- nav ---------- */
   const navWrap = $('.nav-wrap');
