@@ -1155,11 +1155,14 @@ vec3 glassShade(vec3 p, vec3 rd, vec3 n){
   vec3 rdo = normalize(rd + (rdi - rd) * 2.2);                    // approximate exit direction through a thick body
   vec3 trans = env(rdo, 0.04);
   vec3 refl = env(reflect(rd, n), 0.02);
-  float thk = 0.55 + 1.35 * ndv;                                  // thicker through the centre
-  trans *= exp(-vec3(0.65, 0.06, 0.80) * thk * 0.55);
+  float thk = 0.35 + 0.9 * ndv;                                   // thicker through the centre
+  trans = mix(trans, vec3(1.0), 0.35);                            // clear glass: mostly the bright studio behind
+  trans *= exp(-vec3(0.55, 0.05, 0.70) * thk * 0.45);
+  float caust = pow(clamp(dot(rdo, normalize(LDIR)), 0.0, 1.0), 12.0);
+  trans += vec3(0.85, 1.0, 0.7) * caust * 0.25;
   float rim = pow(1.0 - ndv, 3.0);
   vec3 col = mix(trans, refl, F);
-  col = mix(col, col * vec3(0.62, 0.88, 0.50), pow(1.0 - ndv, 2.0) * 0.8);
+  col = mix(col, col * vec3(0.62, 0.88, 0.50), pow(1.0 - ndv, 2.0) * 0.7);
   col += env(reflect(rd, n), 0.02) * 0.14 * F;
   col += vec3(0.5, 0.95, 0.25) * rim * 0.06;
   return col;
@@ -1565,7 +1568,7 @@ void main(){
 
   let gl, glCanvas, U = {}, screenTex, vShader, parExt = null;
   const progs = {};   // one program per scene, compiled lazily and in the background
-  let quality = mobile ? 0.7 : 0.8;           // adaptive scale
+  let quality = mobile ? 0.85 : 1.0;           // adaptive scale
   const stages = [];
   const mouse = { x: 0, y: 0, tx: 0, ty: 0 };
   let ok = false;
@@ -1647,10 +1650,10 @@ void main(){
 
   function sizeStage(s) {
     const r = s.el.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, SOFTWARE ? 1 : (s.static ? 2 : (mobile ? 1.25 : 1.5)));
-    const k = (s.static ? dpr : Math.max(0.55, dpr * quality)) * DEBUG_SCALE;
+    const dpr = SOFTWARE ? 1 : Math.min(2, (window.devicePixelRatio || 1) * (mobile ? 1 : 1.5));   // supersample on desktop for crisp edges
+    const k = (s.static ? dpr : Math.max(0.6, dpr * quality)) * DEBUG_SCALE;
     let w = Math.max(2, Math.round(r.width * k)), h = Math.max(2, Math.round(r.height * k));
-    const cap = SOFTWARE ? (s.hero ? 720 : 520) : s.static ? 1500 : (s.hero ? (mobile ? 620 : 860) : (mobile ? 460 : 620));
+    const cap = SOFTWARE ? (s.hero ? 720 : 520) : (mobile ? 1100 : 1700);
     const m = Math.max(w, h);
     if (m > cap) { w = Math.round((w * cap) / m); h = Math.round((h * cap) / m); }
     if (s.el.width !== w || s.el.height !== h) { s.el.width = w; s.el.height = h; }
@@ -1682,8 +1685,8 @@ void main(){
     gl.uniform2f(U.uMouse, mouse.x * s.mouseAmt, mouse.y * s.mouseAmt);
     gl.uniform4f(U.uFloor, sc.floor[0], sc.floor[1], sc.floor[2], sc.floor[3]);
     gl.uniform4f(U.uBound, sc.bound[0], sc.bound[1], sc.bound[2], sc.bound[3]);
-    gl.uniform1i(U.uSteps, SOFTWARE ? 72 : s.static ? 128 : (mobile || quality < 0.7 ? 72 : 90));
-    gl.uniform1f(U.uQ, SOFTWARE ? 0.4 : s.static ? 1.0 : (mobile || quality < 0.7 ? 0.3 : 0.7));
+    gl.uniform1i(U.uSteps, SOFTWARE ? 72 : (quality < 0.7 ? 96 : 128));
+    gl.uniform1f(U.uQ, SOFTWARE ? 0.4 : (quality < 0.7 ? 0.4 : 1.0));
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     const ctx = s.ctx;
     ctx.clearRect(0, 0, s.w, s.h);
@@ -1719,12 +1722,12 @@ void main(){
         if (s.warm > 0) { s.warm--; continue; }       // first frames include driver warm-up, don't adapt on them
         heroCost += (cost - heroCost) * 0.15;
         // adapt: lower resolution first, then frame rate, finally stop animating
-        if (heroCost > 26) {
-          if (quality > 0.5) quality = Math.max(0.5, quality * 0.88);
+        if (heroCost > 18) {
+          if (quality > 0.55) quality = Math.max(0.55, quality * 0.9);
           else if (s.interval < 100) s.interval = 66;
           else if (heroCost > 90) { s.interval = 400; }
         } else if (heroCost < 12 && s.interval > 0) { s.interval = Math.max(0, s.interval - 1); }
-        else if (heroCost < 10 && quality < 0.9) quality = Math.min(0.9, quality * 1.01);
+        else if (heroCost < 9 && quality < 1.0) quality = Math.min(1.0, quality * 1.02);
         continue;
       }
       // every other scene: one first frame when it appears, then animate only while hovered
