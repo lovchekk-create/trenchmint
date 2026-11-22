@@ -773,28 +773,19 @@ vec2 mapHero(vec3 p){
   vec2 res = vec2(1e5, 0.0);
   float t = uTime;
   { // smartphone
-    vec3 q = p; q.y -= sin(t * 0.9) * 0.06;
-    float ph = t * 0.5;
-    q.xz = rot(-0.30 + ph - 0.35 * sin(ph) + uMouse.x * 0.22) * q.xz;   // continuous 360° spin, slows down facing the front
-    q.yz = rot(0.05 + sin(t * 0.6) * 0.015 + uMouse.y * 0.08) * q.yz;
+    vec3 q = p; q.y -= sin(t * 0.9) * 0.09;
+    // float in the air: gentle sway, screen always faces the viewer
+    q.xz = rot(-0.30 + sin(t * 0.55) * 0.16 + uMouse.x * 0.22) * q.xz;
+    q.yz = rot(0.05 + sin(t * 0.7 + 1.0) * 0.045 + uMouse.y * 0.08) * q.yz;
+    q.xy = rot(sin(t * 0.45 + 0.5) * 0.035) * q.xy;
     const float PS = 1.32;
     q /= PS;
-    BOUND(vec3(0.0, sin(t * 0.9) * 0.06, 0.0), 1.55 * PS) {
+    BOUND(vec3(0.0, sin(t * 0.9) * 0.09, 0.0), 1.55 * PS) {
       ADD(phoneBody(q) * PS, 5, q)
       ADD(sdBox(q - vec3( 0.605, 0.35, 0.0), vec3(0.016, 0.20, 0.022), 0.012) * PS, 5, q)
       ADD(sdBox(q - vec3(-0.605, 0.60, 0.0), vec3(0.016, 0.10, 0.022), 0.012) * PS, 5, q)
       ADD(sdBox(q - vec3(-0.605, 0.36, 0.0), vec3(0.016, 0.10, 0.022), 0.012) * PS, 5, q)
       ADD(sdBox(q - vec3(-0.605, 0.90, 0.0), vec3(0.016, 0.05, 0.022), 0.012) * PS, 2, q)
-      // back: camera island, lenses and lime TrenchMint mark
-      ADD(ext(sdRR2(q.xy - vec2(-0.27, 0.86), vec2(0.25), 0.09), q.z + 0.070, 0.016) * PS, 5, q)
-      ADD(sdCylZ(q - vec3(-0.35, 0.95, -0.094), 0.068, 0.014, 0.010) * PS, 4, q)
-      ADD(sdCylZ(q - vec3(-0.35, 0.77, -0.094), 0.068, 0.014, 0.010) * PS, 4, q)
-      ADD(sdCylZ(q - vec3(-0.17, 0.86, -0.094), 0.068, 0.014, 0.010) * PS, 4, q)
-      ADD(sdCylZ(q - vec3(-0.35, 0.95, -0.100), 0.044, 0.014, 0.008) * PS, 7, q)
-      ADD(sdCylZ(q - vec3(-0.35, 0.77, -0.100), 0.044, 0.014, 0.008) * PS, 7, q)
-      ADD(sdCylZ(q - vec3(-0.17, 0.86, -0.100), 0.044, 0.014, 0.008) * PS, 7, q)
-      ADD(sdSphere(q - vec3(-0.17, 1.02, -0.088), 0.022) * PS, 2, q)
-      ADD(max(ext(sdSym(vec2(-q.x, q.y + 0.30) / 0.30) * 0.30, q.z + 0.063, 0.006), 0.0) * 0.0 + ext(sdSym(vec2(-q.x, q.y + 0.30) / 0.30) * 0.30, q.z + 0.063, 0.006) * PS, 2, q)
     }
   }
   { vec3 c = vec3(1.50, 1.52 + sin(t * 1.1) * 0.07, 0.60); vec3 q = coinQ(p, c, t * 0.9, 0.32);
@@ -1116,12 +1107,14 @@ void matParams(int m, out vec3 alb, out float rough, out float metal, out float 
 }
 
 /* ---------- lighting helpers ---------- */
-vec3 calcNormal(vec3 p){
-  vec3 n = vec3(0.0);
-  for (int i = ZERO; i < 4; i++){
-    vec3 e = 0.5773 * (2.0 * vec3(float(((i + 3) >> 1) & 1), float((i >> 1) & 1), float(i & 1)) - 1.0);
-    n += e * map(p + e * 0.0005).x;
+vec3 calcNormalM(vec3 p, out float mat){
+  vec3 n = vec3(0.0); vec3 lq = vec3(0.0); mat = 0.0;
+  for (int i = ZERO; i < 5; i++){
+    vec3 e = i < 4 ? 0.5773 * (2.0 * vec3(float(((i + 3) >> 1) & 1), float((i >> 1) & 1), float(i & 1)) - 1.0) : vec3(0.0);
+    vec2 r = map(p + e * 0.0005);
+    if (i < 4) n += e * r.x; else { mat = r.y; lq = gq; }
   }
+  gq = lq;
   return normalize(n);
 }
 
@@ -1139,8 +1132,6 @@ float softShadowJ(vec3 ro, vec3 rd, float k, float tmax, float jit){
   return res * res * (3.0 - 2.0 * res);
 }
 
-float softShadow(vec3 ro, vec3 rd, float k, float tmax){ return softShadowJ(ro, rd, k, tmax, 0.0); }
-
 float calcAO(vec3 p, vec3 n){
   float occ = 0.0; float sca = 1.0;
   int n_ = uQ > 0.5 ? 5 : 3;
@@ -1153,39 +1144,7 @@ float calcAO(vec3 p, vec3 n){
   return clamp(1.0 - 1.7 * occ, 0.0, 1.0);
 }
 
-bool marchSimple(vec3 ro, vec3 rd, float tmax, out float tt, out vec2 rr){
-  float t = 0.03; rr = vec2(0.0);
-  for (int i = ZERO; i < 56; i++){
-    rr = map(ro + rd * t);
-    if (rr.x < 0.0006 * t + 0.0003){ tt = t; return true; }
-    t += rr.x * 0.92;
-    if (t > tmax) break;
-  }
-  tt = t; return false;
-}
-
 const vec3 LDIR = vec3(-0.50, 0.88, 0.62);
-
-vec3 quickShadeT(vec3 ro, vec3 rd, float tmax, out bool hit){
-  float tt; vec2 rr;
-  hit = marchSimple(ro, rd, tmax, tt, rr);
-  if (hit){
-    vec3 p = ro + rd * tt;
-    vec3 n = calcNormal(p);
-    rr = map(p);
-    int m = int(rr.y + 0.5);
-    vec3 alb; float rough, metal, sss; matParams(m, alb, rough, metal, sss);
-    vec3 L = normalize(LDIR);
-    vec3 dif = alb * (env(n, 1.0) * 0.75 + vec3(1.0) * max(dot(n, L), 0.0) * 0.55);
-    if (sss > 0.5) dif += vec3(0.25, 0.8, 0.08) * 0.15;
-    float ndv = clamp(dot(n, -rd), 0.0, 1.0);
-    float F = 0.04 + 0.96 * pow(1.0 - ndv, 5.0);
-    vec3 sp = env(reflect(rd, n), rough) * mix(vec3(F), alb, metal);
-    return mix(dif, vec3(0.0), metal) + sp;
-  }
-  return env(rd, 0.04);
-}
-vec3 quickShade(vec3 ro, vec3 rd){ bool h; return quickShadeT(ro, rd, 12.0, h); }
 
 vec3 glassShade(vec3 p, vec3 rd, vec3 n){
   float ndv = clamp(dot(n, -rd), 0.0, 1.0);
@@ -1193,43 +1152,20 @@ vec3 glassShade(vec3 p, vec3 rd, vec3 n){
   F = clamp(F * 1.15, 0.0, 1.0);
   const float IOR = 1.42;
   vec3 rdi = refract(rd, n, 1.0 / IOR);
-  // march inside the glass (glass-only SDF, negative inside) to find the exit
-  gMode = 2;
-  float ti = 0.03;
-  for (int i = ZERO; i < 26; i++){
-    float d = -map(p + rdi * ti).x;
-    if (d < 0.003) break;
-    ti += max(d * 0.9, 0.012);
-  }
-  vec3 pe = p + rdi * ti;
-  vec3 ne = calcNormal(pe);
-  gMode = 1;
-  bool inner = false;
-  vec3 trans = vec3(0.0), refl = vec3(0.0);
-  for (int k = ZERO; k < 3; k++){              // one loop so the scene SDF is inlined only once
-    vec3 o, d; float tm = 12.0;
-    if (k == 0){ o = p + rdi * 0.02; d = rdi; tm = ti; }            // objects inside the glass
-    else if (k == 1){
-      if (inner) continue;
-      vec3 rdo = refract(rdi, -ne, IOR);
-      if (dot(rdo, rdo) < 0.001) rdo = reflect(rdi, -ne);
-      o = pe + rdo * 0.03; d = rdo;
-    } else { o = p + n * 0.02; d = reflect(rd, n); }
-    bool h; vec3 c = quickShadeT(o, d, tm, h);
-    if (k == 0){ inner = h; trans = c; } else if (k == 1) trans = c; else refl = c;
-  }
-  gMode = 0;
-  float thk = ti * (inner ? 0.5 : 1.0);
+  vec3 rdo = normalize(rd + (rdi - rd) * 2.2);                    // approximate exit direction through a thick body
+  vec3 trans = env(rdo, 0.04);
+  vec3 refl = env(reflect(rd, n), 0.02);
+  float thk = 0.55 + 1.35 * ndv;                                  // thicker through the centre
   trans *= exp(-vec3(0.65, 0.06, 0.80) * thk * 0.55);
   float rim = pow(1.0 - ndv, 3.0);
   vec3 col = mix(trans, refl, F);
-  col = mix(col, col * vec3(0.62, 0.88, 0.50), pow(1.0 - ndv, 2.0) * 0.8);      // deeper lime at the edges
+  col = mix(col, col * vec3(0.62, 0.88, 0.50), pow(1.0 - ndv, 2.0) * 0.8);
   col += env(reflect(rd, n), 0.02) * 0.14 * F;
   col += vec3(0.5, 0.95, 0.25) * rim * 0.06;
   return col;
 }
 
-vec3 shade(vec3 p, vec3 rd, vec3 n, float matf, vec3 lq){
+vec3 shade(vec3 p, vec3 rd, vec3 n, float matf, vec3 lq, float sh){
   int m = int(matf + 0.5);
   if (m == 3) return glassShade(p, rd, n);
 
@@ -1239,9 +1175,6 @@ vec3 shade(vec3 p, vec3 rd, vec3 n, float matf, vec3 lq){
   float ndv = clamp(dot(n, -rd), 0.0, 1.0);
   vec3 L = normalize(LDIR);
   float ao = calcAO(p, n);
-  gMode = 1;
-  float sh = softShadow(p + n * 0.01, L, 9.0, 8.0);
-  gMode = 0;
 
   vec3 r = reflect(rd, n);
   bool isScreen = false;
@@ -1277,11 +1210,8 @@ vec3 shade(vec3 p, vec3 rd, vec3 n, float matf, vec3 lq){
     float F = F0 + (max(1.0 - rough, F0) - F0) * pow(1.0 - ndv, 5.0);
     vec3 specTint = mix(vec3(1.0), alb, metal);
     vec3 specEnv;
-    if (m == 4){
-      specEnv = quickShade(p + n * 0.02, r);
-    } else {
-      specEnv = env(r, rough);
-    }
+    specEnv = env(r, rough);
+    if (m == 4) specEnv = mix(specEnv, specEnv * vec3(0.55, 0.60, 0.55), smoothstep(0.2, -0.4, r.y));
     float so = clamp(pow(ndv + ao, rough * 3.0 + 0.5) - 1.0 + ao, 0.0, 1.0);
     vec3 spec = specEnv * specTint * mix(F, 1.0, metal) * (0.35 + 0.65 * sh) * mix(0.55, 1.0, ao);
     col = diffuse + spec;
@@ -1302,37 +1232,6 @@ vec3 tonemap(vec3 c){
   vec3 t = max(c - 0.78, 0.0);
   c = min(c, vec3(0.78)) + 0.22 * tanh(t / 0.22);
   return pow(c, vec3(1.0 / 2.2));
-}
-
-vec3 surf(vec3 p, vec3 rd){
-  vec3 n = calcNormal(p);
-  vec2 r = map(p);
-  vec3 lq = gq;
-  return shade(p, rd, n, r.y, lq);
-}
-
-vec4 floorShadow(vec3 ro, vec3 rd, vec2 uv){
-  if (uFloor.y <= 0.0 || rd.y > -0.0001) return vec4(0.0);
-  float tf = (uFloor.x - ro.y) / rd.y;
-  if (tf <= 0.0) return vec4(0.0);
-  vec3 pf = ro + rd * tf;
-  float fade = 1.0 - smoothstep(uFloor.y * 0.30, uFloor.y, length(pf.xz - uFloor.zw));
-  float asp = uRes.x / uRes.y;
-  fade *= smoothstep(-1.0, -0.50, uv.y) * (1.0 - smoothstep(asp - 0.45, asp - 0.05, abs(uv.x)));
-  if (fade <= 0.001) return vec4(0.0);
-  gMode = 1;
-  vec3 L = normalize(LDIR);
-  float jt = hash21(gl_FragCoord.xy) * 0.18;
-  float s1 = 1.0, s2 = 1.0;
-  for (int k = ZERO; k < 2; k++){
-    float sv = softShadowJ(pf + vec3(0.0, 0.003, 0.0), k == 0 ? L : vec3(0.0, 1.0, 0.0), k == 0 ? 3.5 : 1.5, 9.0, jt);
-    if (k == 0) s1 = sv; else s2 = sv;
-  }
-  gMode = 0;
-  float a = (0.20 * (1.0 - s1) + 0.30 * (1.0 - s2)) * fade;
-  a = clamp(a, 0.0, 0.5);
-  vec3 tint = vec3(0.10, 0.17, 0.08);
-  return vec4(tint * a, a);
 }
 
 void main(){
@@ -1373,17 +1272,48 @@ void main(){
     }
   }
 
-  vec4 obj = vec4(0.0);
   float cov = 0.0, ts = t;
   if (hit) cov = 1.0;
   else if (hitB && minRatio < gPix * 0.55){ cov = clamp(0.5 - minRatio / gPix, 0.0, 1.0); ts = tEdge; }
-  if (cov > 0.0){
-    vec3 p = ro + rd * ts;
-    obj = vec4(tonemap(surf(p, rd)) * cov, cov);
+
+  vec3 p = ro + rd * ts;
+  vec3 n = vec3(0.0, 1.0, 0.0); float mat = 0.0; vec3 lq = vec3(0.0);
+  if (cov > 0.0){ n = calcNormalM(p, mat); lq = gq; }
+
+  bool doFloor = cov < 0.999 && uFloor.y > 0.0 && rd.y < -0.0001;
+  vec3 pf = ro; float fade = 0.0;
+  if (doFloor){
+    float tf = (uFloor.x - ro.y) / rd.y;
+    pf = ro + rd * tf;
+    fade = 1.0 - smoothstep(uFloor.y * 0.30, uFloor.y, length(pf.xz - uFloor.zw));
+    float asp = uRes.x / uRes.y;
+    fade *= smoothstep(-1.0, -0.50, uv.y) * (1.0 - smoothstep(asp - 0.45, asp - 0.05, abs(uv.x)));
+    doFloor = tf > 0.0 && fade > 0.001;
   }
 
+  // all shadow rays share one loop, so the scene is compiled into it only once
+  vec3 L = normalize(LDIR);
+  float jt = hash21(gl_FragCoord.xy) * 0.18;
+  float sh = 1.0, s1 = 1.0, s2 = 1.0;
+  gMode = 1;
+  for (int k = ZERO; k < 3; k++){
+    bool act = k == 0 ? (cov > 0.0) : doFloor;
+    if (!act) continue;
+    vec3 o = k == 0 ? p + n * 0.01 : pf + vec3(0.0, 0.003, 0.0);
+    vec3 d = k == 2 ? vec3(0.0, 1.0, 0.0) : L;
+    float sv = softShadowJ(o, d, k == 0 ? 9.0 : (k == 1 ? 3.5 : 1.5), k == 0 ? 8.0 : 9.0, k == 0 ? 0.0 : jt);
+    if (k == 0) sh = sv; else if (k == 1) s1 = sv; else s2 = sv;
+  }
+  gMode = 0;
+
+  vec4 obj = vec4(0.0);
+  if (cov > 0.0) obj = vec4(tonemap(shade(p, rd, n, mat, lq, sh)) * cov, cov);
+
   vec4 flo = vec4(0.0);
-  if (obj.a < 0.999) flo = floorShadow(ro, rd, uv);
+  if (doFloor){
+    float a = clamp((0.20 * (1.0 - s1) + 0.30 * (1.0 - s2)) * fade, 0.0, 0.5);
+    flo = vec4(vec3(0.10, 0.17, 0.08) * a, a);
+  }
 
   vec4 outc = vec4(obj.rgb + (1.0 - obj.a) * flo.rgb, obj.a + (1.0 - obj.a) * flo.a);
   outc.rgb += (hash21(gl_FragCoord.xy + uTime) - 0.5) / 255.0 * outc.a;
