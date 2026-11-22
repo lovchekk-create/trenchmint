@@ -268,7 +268,9 @@ h3 { font-size: clamp(26px, 2.6vw, 38px); letter-spacing: -0.025em; line-height:
 .render-tile figcaption b { display: block; font: 700 20px/1.1 var(--display); letter-spacing: -.01em; text-transform: uppercase; }
 .render-tile figcaption span { display: block; margin-top: 8px; font-size: 14.5px; color: var(--gray); }
 .hero-stage .fallback { display: none; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; mix-blend-mode: multiply; }
-.no-webgl .hero-stage .fallback { display: block; }
+.no-webgl .hero-stage .fallback, .hero-stage:not(.stage-ready) .fallback, .hero-stage.stage-failed .fallback { display: block; }
+.hero-stage:not(.stage-ready)::before { display: none; }
+.stage-failed .stage { display: none; }
 .no-webgl .hero-stage::before { display: none; }
 
 /* ---------- Steps ---------- */
@@ -655,7 +657,7 @@ h3 { font-size: clamp(26px, 2.6vw, 38px); letter-spacing: -0.025em; line-height:
 
 <script>
 /* TrenchMint — procedural 3D scene shader (WebGL2 raymarcher, no external libs)
- * One fragment shader renders every 3D object on the site:
+ * One fragment shader (specialised per scene via #define SCENE) renders every 3D object on the site:
  * smooth SDF geometry, beveled edges, PBR-lite materials, studio softbox
  * environment, soft shadows, ambient occlusion, glass absorption, chrome reflections.
  */
@@ -675,7 +677,6 @@ precision highp sampler2D;
 
 uniform vec2  uRes;
 uniform float uTime;
-uniform int   uScene;
 uniform vec3  uCamPos;
 uniform vec3  uCamTarget;
 uniform float uTan;
@@ -686,6 +687,10 @@ uniform int   uSteps;
 uniform float uQ;       // 1 = full quality, 0 = light
 uniform sampler2D uScreen;
 out vec4 outColor;
+#ifndef SCENE
+#define SCENE 0
+#endif
+#define ZERO min(uSteps, 0)
 
 const float PI  = 3.14159265359;
 const float TAU = 6.28318530718;
@@ -763,6 +768,7 @@ float phoneBody(vec3 p){
 /* mat ids: 1 white ceramic, 2 lime acrylic, 3 glass, 4 chrome, 5 phone aluminium, 7 dark */
 
 /* ===== 0 : HERO ===== */
+#if SCENE == 0
 vec2 mapHero(vec3 p){
   vec2 res = vec2(1e5, 0.0);
   float t = uTime;
@@ -806,6 +812,8 @@ vec2 mapHero(vec3 p){
 }
 
 /* ===== 1 : TREND RADAR ===== */
+#endif
+#if SCENE == 1
 vec2 mapRadar(vec3 p){
   vec2 res = vec2(1e5, 0.0);
   float t = uTime;
@@ -825,6 +833,8 @@ vec2 mapRadar(vec3 p){
 }
 
 /* ===== 2 : TOKEN INTELLIGENCE ===== */
+#endif
+#if SCENE == 2
 vec2 mapIntel(vec3 p){
   vec2 res = vec2(1e5, 0.0);
   float t = uTime;
@@ -842,6 +852,8 @@ vec2 mapIntel(vec3 p){
 }
 
 /* ===== 3 : LAUNCHPAD ===== */
+#endif
+#if SCENE == 3
 vec2 mapLaunch(vec3 p){
   vec2 res = vec2(1e5, 0.0);
   float t = uTime;
@@ -853,7 +865,7 @@ vec2 mapLaunch(vec3 p){
     BOUND(c, 0.95) { ADDV(coin(q, 0.52, 0.085, 2.0), q)
       vec3 r = p - c; r.xz = rot(-t * 0.8) * r.xz; r = r.xzy;
       ADD(sdTorus(vec3(r.x, r.y, r.z), 0.80, 0.035), 4, r) } }
-  for (int i = 0; i < 3; i++){
+  for (int i = ZERO; i < 3; i++){
     float fi = float(i);
     float h = fract(t * 0.25 + fi * 0.33);
     vec3 sp = vec3(0.95 * cos(fi * 2.1 + 0.7), -0.55 + h * 2.1, 0.95 * sin(fi * 2.1 + 0.7));
@@ -863,6 +875,8 @@ vec2 mapLaunch(vec3 p){
 }
 
 /* ===== 4 : DEGEN COMMUNITY (card) ===== */
+#endif
+#if SCENE == 4
 vec2 mapCommunityCard(vec3 p){
   vec2 res = vec2(1e5, 0.0);
   float t = uTime;
@@ -883,6 +897,8 @@ vec2 mapCommunityCard(vec3 p){
 }
 
 /* ===== 5 : 3D SHOWCASE ===== */
+#endif
+#if SCENE == 5
 vec2 mapShowcase(vec3 p){
   vec2 res = vec2(1e5, 0.0);
   float t = uTime;
@@ -924,6 +940,8 @@ vec2 mapShowcase(vec3 p){
 }
 
 /* ===== 6 : DISCOVER ===== */
+#endif
+#if SCENE == 6
 vec2 mapDiscover(vec3 p){
   vec2 res = vec2(1e5, 0.0);
   float t = uTime;
@@ -937,6 +955,8 @@ vec2 mapDiscover(vec3 p){
 }
 
 /* ===== 7 : ANALYZE ===== */
+#endif
+#if SCENE == 7
 vec2 mapAnalyze(vec3 p){
   vec2 res = vec2(1e5, 0.0);
   float t = uTime;
@@ -956,6 +976,8 @@ vec2 mapAnalyze(vec3 p){
 }
 
 /* ===== 8 : EXECUTE ===== */
+#endif
+#if SCENE == 8
 vec2 mapExecute(vec3 p){
   vec2 res = vec2(1e5, 0.0);
   float t = uTime;
@@ -973,6 +995,8 @@ vec2 mapExecute(vec3 p){
 }
 
 /* ===== 9 : FINAL CTA ===== */
+#endif
+#if SCENE == 9
 vec2 mapCTA(vec3 p){
   vec2 res = vec2(1e5, 0.0);
   float t = uTime;
@@ -1001,6 +1025,8 @@ vec2 mapCTA(vec3 p){
 }
 
 /* ===== 10 : COMMUNITY VISUAL ===== */
+#endif
+#if SCENE == 10
 vec2 mapCommunity(vec3 p){
   vec2 res = vec2(1e5, 0.0);
   float t = uTime;
@@ -1023,18 +1049,32 @@ vec2 mapCommunity(vec3 p){
   return res;
 }
 
+#endif
+
 vec2 map(vec3 p){
-  if (uScene == 0)  return mapHero(p);
-  if (uScene == 1)  return mapRadar(p);
-  if (uScene == 2)  return mapIntel(p);
-  if (uScene == 3)  return mapLaunch(p);
-  if (uScene == 4)  return mapCommunityCard(p);
-  if (uScene == 5)  return mapShowcase(p);
-  if (uScene == 6)  return mapDiscover(p);
-  if (uScene == 7)  return mapAnalyze(p);
-  if (uScene == 8)  return mapExecute(p);
-  if (uScene == 9)  return mapCTA(p);
+#if SCENE == 0
+  return mapHero(p);
+#elif SCENE == 1
+  return mapRadar(p);
+#elif SCENE == 2
+  return mapIntel(p);
+#elif SCENE == 3
+  return mapLaunch(p);
+#elif SCENE == 4
+  return mapCommunityCard(p);
+#elif SCENE == 5
+  return mapShowcase(p);
+#elif SCENE == 6
+  return mapDiscover(p);
+#elif SCENE == 7
+  return mapAnalyze(p);
+#elif SCENE == 8
+  return mapExecute(p);
+#elif SCENE == 9
+  return mapCTA(p);
+#else
   return mapCommunity(p);
+#endif
 }
 
 /* ---------- studio environment (softboxes + lime bounce) ---------- */
@@ -1077,14 +1117,18 @@ void matParams(int m, out vec3 alb, out float rough, out float metal, out float 
 
 /* ---------- lighting helpers ---------- */
 vec3 calcNormal(vec3 p){
-  const vec2 e = vec2(1.0, -1.0) * 0.0005;
-  return normalize(e.xyy * map(p + e.xyy).x + e.yyx * map(p + e.yyx).x + e.yxy * map(p + e.yxy).x + e.xxx * map(p + e.xxx).x);
+  vec3 n = vec3(0.0);
+  for (int i = ZERO; i < 4; i++){
+    vec3 e = 0.5773 * (2.0 * vec3(float(((i + 3) >> 1) & 1), float((i >> 1) & 1), float(i & 1)) - 1.0);
+    n += e * map(p + e * 0.0005).x;
+  }
+  return normalize(n);
 }
 
 float softShadowJ(vec3 ro, vec3 rd, float k, float tmax, float jit){
   float res = 1.0; float t = 0.02 + jit;
   int n = uQ > 0.5 ? 44 : 20;
-  for (int i = 0; i < 44; i++){
+  for (int i = ZERO; i < 44; i++){
     if (i >= n) break;
     float h = map(ro + rd * t).x;
     res = min(res, k * h / t);
@@ -1100,7 +1144,7 @@ float softShadow(vec3 ro, vec3 rd, float k, float tmax){ return softShadowJ(ro, 
 float calcAO(vec3 p, vec3 n){
   float occ = 0.0; float sca = 1.0;
   int n_ = uQ > 0.5 ? 5 : 3;
-  for (int i = 0; i < 5; i++){
+  for (int i = ZERO; i < 5; i++){
     if (i >= n_) break;
     float h = 0.015 + 0.16 * float(i) / 4.0;
     float d = map(p + h * n).x;
@@ -1111,7 +1155,7 @@ float calcAO(vec3 p, vec3 n){
 
 bool marchSimple(vec3 ro, vec3 rd, float tmax, out float tt, out vec2 rr){
   float t = 0.03; rr = vec2(0.0);
-  for (int i = 0; i < 56; i++){
+  for (int i = ZERO; i < 56; i++){
     rr = map(ro + rd * t);
     if (rr.x < 0.0006 * t + 0.0003){ tt = t; return true; }
     t += rr.x * 0.92;
@@ -1152,7 +1196,7 @@ vec3 glassShade(vec3 p, vec3 rd, vec3 n){
   // march inside the glass (glass-only SDF, negative inside) to find the exit
   gMode = 2;
   float ti = 0.03;
-  for (int i = 0; i < 26; i++){
+  for (int i = ZERO; i < 26; i++){
     float d = -map(p + rdi * ti).x;
     if (d < 0.003) break;
     ti += max(d * 0.9, 0.012);
@@ -1160,14 +1204,20 @@ vec3 glassShade(vec3 p, vec3 rd, vec3 n){
   vec3 pe = p + rdi * ti;
   vec3 ne = calcNormal(pe);
   gMode = 1;
-  bool inner;
-  vec3 trans = quickShadeT(p + rdi * 0.02, rdi, ti, inner);       // objects inside the glass
-  if (!inner){
-    vec3 rdo = refract(rdi, -ne, IOR);
-    if (dot(rdo, rdo) < 0.001) rdo = reflect(rdi, -ne);
-    trans = quickShade(pe + rdo * 0.03, rdo);
+  bool inner = false;
+  vec3 trans = vec3(0.0), refl = vec3(0.0);
+  for (int k = ZERO; k < 3; k++){              // one loop so the scene SDF is inlined only once
+    vec3 o, d; float tm = 12.0;
+    if (k == 0){ o = p + rdi * 0.02; d = rdi; tm = ti; }            // objects inside the glass
+    else if (k == 1){
+      if (inner) continue;
+      vec3 rdo = refract(rdi, -ne, IOR);
+      if (dot(rdo, rdo) < 0.001) rdo = reflect(rdi, -ne);
+      o = pe + rdo * 0.03; d = rdo;
+    } else { o = p + n * 0.02; d = reflect(rd, n); }
+    bool h; vec3 c = quickShadeT(o, d, tm, h);
+    if (k == 0){ inner = h; trans = c; } else if (k == 1) trans = c; else refl = c;
   }
-  vec3 refl = quickShade(p + n * 0.02, reflect(rd, n));
   gMode = 0;
   float thk = ti * (inner ? 0.5 : 1.0);
   trans *= exp(-vec3(0.65, 0.06, 0.80) * thk * 0.55);
@@ -1195,7 +1245,7 @@ vec3 shade(vec3 p, vec3 rd, vec3 n, float matf, vec3 lq){
 
   vec3 r = reflect(rd, n);
   bool isScreen = false;
-  if (m == 5 && uScene == 0 && lq.z > 0.050){
+  if (m == 5 && SCENE == 0 && lq.z > 0.050){
     isScreen = sdRR2(lq.xy, vec2(0.548, 1.188), 0.125) < 0.0;
   }
 
@@ -1215,7 +1265,7 @@ vec3 shade(vec3 p, vec3 rd, vec3 n, float matf, vec3 lq){
     col = tex * (0.97 + 0.03 * sh) + sp + vec3(streak);
   } else {
     float sdScr = 1.0;
-    if (m == 5 && uScene == 0 && lq.z > 0.050) sdScr = sdRR2(lq.xy, vec2(0.548, 1.188), 0.125);
+    if (m == 5 && SCENE == 0 && lq.z > 0.050) sdScr = sdRR2(lq.xy, vec2(0.548, 1.188), 0.125);
     if (sdScr < 0.011 && sdScr > -0.001) alb = vec3(0.012, 0.016, 0.012);  // glass edge ring
 
     vec3 irr = env(n, 1.0) * 0.82;
@@ -1273,8 +1323,11 @@ vec4 floorShadow(vec3 ro, vec3 rd, vec2 uv){
   gMode = 1;
   vec3 L = normalize(LDIR);
   float jt = hash21(gl_FragCoord.xy) * 0.18;
-  float s1 = softShadowJ(pf + vec3(0.0, 0.003, 0.0), L, 3.5, 9.0, jt);
-  float s2 = softShadowJ(pf + vec3(0.0, 0.003, 0.0), vec3(0.0, 1.0, 0.0), 1.5, 9.0, jt);
+  float s1 = 1.0, s2 = 1.0;
+  for (int k = ZERO; k < 2; k++){
+    float sv = softShadowJ(pf + vec3(0.0, 0.003, 0.0), k == 0 ? L : vec3(0.0, 1.0, 0.0), k == 0 ? 3.5 : 1.5, 9.0, jt);
+    if (k == 0) s1 = sv; else s2 = sv;
+  }
   gMode = 0;
   float a = (0.20 * (1.0 - s1) + 0.30 * (1.0 - s2)) * fade;
   a = clamp(a, 0.0, 0.5);
@@ -1309,7 +1362,7 @@ void main(){
   float t = t0;
   float minRatio = 1e5; float tEdge = t0;
   if (hitB && t1 > 0.0){
-    for (int i = 0; i < 140; i++){
+    for (int i = ZERO; i < 140; i++){
       if (i >= uSteps) break;
       vec2 r = map(ro + rd * t);
       float ratio = r.x / t;
@@ -1321,15 +1374,12 @@ void main(){
   }
 
   vec4 obj = vec4(0.0);
-  if (hit){
-    vec3 p = ro + rd * t;
-    obj = vec4(tonemap(surf(p, rd)), 1.0);
-  } else if (hitB && minRatio < gPix * 0.55){
-    float cov = clamp(0.5 - minRatio / gPix, 0.0, 1.0);
-    if (cov > 0.0){
-      vec3 p = ro + rd * tEdge;
-      obj = vec4(tonemap(surf(p, rd)) * cov, cov);
-    }
+  float cov = 0.0, ts = t;
+  if (hit) cov = 1.0;
+  else if (hitB && minRatio < gPix * 0.55){ cov = clamp(0.5 - minRatio / gPix, 0.0, 1.0); ts = tEdge; }
+  if (cov > 0.0){
+    vec3 p = ro + rd * ts;
+    obj = vec4(tonemap(surf(p, rd)) * cov, cov);
   }
 
   vec4 flo = vec4(0.0);
@@ -1583,11 +1633,36 @@ void main(){
   const DEBUG_SCALE = parseFloat(params.get('scale') || '1');
   const mobile = matchMedia('(max-width: 820px)').matches || matchMedia('(pointer: coarse)').matches;
 
-  let gl, glCanvas, prog, U = {}, screenTex;
+  let gl, glCanvas, U = {}, screenTex, vShader, parExt = null;
+  const progs = {};   // one program per scene, compiled lazily and in the background
   let quality = mobile ? 0.7 : 0.8;           // adaptive scale
   const stages = [];
   const mouse = { x: 0, y: 0, tx: 0, ty: 0 };
   let ok = false;
+
+  // Compile a scene's program without blocking the page: with KHR_parallel_shader_compile the
+  // driver compiles in the background and we only poll COMPLETION_STATUS (never wait on it).
+  function getProg(id) {
+    if (progs[id]) return progs[id];
+    const fs = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(fs, TM.FRAG.replace('#version 300 es\n', '#version 300 es\n#define SCENE ' + id + '\n'));
+    gl.compileShader(fs);
+    const prog = gl.createProgram();
+    gl.attachShader(prog, vShader); gl.attachShader(prog, fs); gl.linkProgram(prog);
+    return (progs[id] = { prog, fs, state: 'pending', U: {}, since: performance.now() });
+  }
+  function progReady(e) {
+    if (e.state !== 'pending') return e.state === 'ok';
+    if (parExt && !gl.getProgramParameter(e.prog, parExt.COMPLETION_STATUS_KHR)) return false;
+    if (!gl.getProgramParameter(e.prog, gl.LINK_STATUS)) {
+      console.error('[TrenchMint] shader error:\n' + gl.getShaderInfoLog(e.fs) + gl.getProgramInfoLog(e.prog));
+      e.state = 'fail'; return false;
+    }
+    gl.useProgram(e.prog);
+    ['uRes', 'uTime', 'uCamPos', 'uCamTarget', 'uTan', 'uMouse', 'uFloor', 'uBound', 'uSteps', 'uQ', 'uScreen'].forEach((n) => (e.U[n] = gl.getUniformLocation(e.prog, n)));
+    gl.uniform1i(e.U.uScreen, 0);
+    e.state = 'ok'; return true;
+  }
 
   function compile(type, src) {
     const s = gl.createShader(type);
@@ -1610,13 +1685,10 @@ void main(){
       SOFTWARE = /swiftshader|llvmpipe|software|basic render|microsoft basic/i.test(rn);
       if (SOFTWARE) STATIC = true;                       // no GPU acceleration -> render every scene once, no animation
     } catch (e) {}
-    const vs = compile(gl.VERTEX_SHADER, TM.VERT), fs = compile(gl.FRAGMENT_SHADER, TM.FRAG);
-    if (!vs || !fs) return false;
-    prog = gl.createProgram();
-    gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
-    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) { console.error(gl.getProgramInfoLog(prog)); return false; }
-    gl.useProgram(prog);
-    ['uRes', 'uTime', 'uScene', 'uCamPos', 'uCamTarget', 'uTan', 'uMouse', 'uFloor', 'uBound', 'uSteps', 'uQ', 'uScreen'].forEach((n) => (U[n] = gl.getUniformLocation(prog, n)));
+    parExt = gl.getExtension('KHR_parallel_shader_compile');
+    for (const k in progs) delete progs[k];
+    vShader = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vShader, TM.VERT); gl.compileShader(vShader);
     gl.bindVertexArray(gl.createVertexArray());
     screenTex = gl.createTexture();
     gl.activeTexture(gl.TEXTURE0);
@@ -1627,7 +1699,7 @@ void main(){
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     uploadScreen(0);
-    gl.uniform1i(U.uScreen, 0);
+    getProg(0);                                         // start compiling the hero scene right away
     glCanvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); ok = false; });
     glCanvas.addEventListener('webglcontextrestored', () => { ok = init(); });
     return true;
@@ -1656,8 +1728,15 @@ void main(){
   }
 
   function drawStage(s, now) {
+    const e = getProg(s.scene.id);
+    if (!progReady(e)) {
+      if (e.state === 'fail' && s.el.parentElement) s.el.parentElement.classList.add('stage-failed');
+      return false;
+    }
     sizeStage(s);
-    if (s.w < 4 || s.h < 4) return;
+    if (s.w < 4 || s.h < 4) return false;
+    gl.useProgram(e.prog);
+    U = e.U;
     if (glCanvas.width < s.w || glCanvas.height < s.h) {
       glCanvas.width = Math.max(glCanvas.width, s.w); glCanvas.height = Math.max(glCanvas.height, s.h);
     }
@@ -1667,7 +1746,6 @@ void main(){
     gl.viewport(0, 0, s.w, s.h);
     gl.uniform2f(U.uRes, s.w, s.h);
     gl.uniform1f(U.uTime, s.time);
-    gl.uniform1i(U.uScene, sc.id);
     gl.uniform3f(U.uCamPos, sc.cam[0], sc.cam[1], sc.cam[2]);
     gl.uniform3f(U.uCamTarget, sc.tgt[0], sc.tgt[1], sc.tgt[2]);
     gl.uniform1f(U.uTan, tan);
@@ -1685,6 +1763,7 @@ void main(){
       s.el.classList.add('ready');
       if (s.el.parentElement) s.el.parentElement.classList.add('stage-ready');
     }
+    return true;
   }
 
   let lastFrame = 0, heroCost = 0;
@@ -1704,8 +1783,10 @@ void main(){
         s.last = now;
         if (now - lastUI > 140) { lastUI = now; uploadScreen(now / 1000); }
         const t0 = performance.now();
-        drawStage(s, now);
+        if (!drawStage(s, now)) continue;
         const cost = performance.now() - t0;
+        if (s.warm === undefined) { s.warm = 3; }
+        if (s.warm > 0) { s.warm--; continue; }       // first frames include driver warm-up, don't adapt on them
         heroCost += (cost - heroCost) * 0.15;
         // adapt: lower resolution first, then frame rate, finally stop animating
         if (heroCost > 26) {
@@ -1722,7 +1803,7 @@ void main(){
       if (!need || secondary >= 1) continue;
       if (now - s.last < 50) continue;
       s.last = now; s.time += dt * (1 + s.boost * 1.4); secondary++;
-      drawStage(s, now);
+      if (!drawStage(s, now)) secondary--;
     }
   }
 
@@ -1737,7 +1818,7 @@ void main(){
   function renderStatic(s) {
     s.time = params.has('t') ? parseFloat(params.get('t')) : (s.scene.static || 2);
     if (s.hero) uploadScreen(2.2);
-    drawStage(s, 0);
+    if (!drawStage(s, 0) && getProg(s.scene.id).state === 'pending') setTimeout(() => renderStatic(s), 120);
   }
 
   function register(el) {
